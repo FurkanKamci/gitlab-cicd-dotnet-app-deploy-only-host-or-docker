@@ -13,23 +13,33 @@ build_dev:
   stage: build
   script:
     - 'dotnet build -o /app --no-restore'
-    - 'zip -r app.zip /app'
+    - 'zip -r app-$CI_PIPELINE_IID.zip /app'
   
   artifacts:
     expire_in: 1 hrs
     paths:
-      - app.zip
+      - app-$CI_PIPELINE_IID.zip
 
-# tests_dev:
-#   stage: test
-#   needs: [build_dev]
+tests_dev:
+  stage: test
+  needs: [build_dev]
 
-#   script:
-#     - 'dotnet test --no-restore'
+  script:
+    - 'dotnet test --no-restore'
 
-# deploy_dev:
-#   stage: deploy
-#   needs: [tests_dev]
+deploy_dev:
+  stage: deploy
+  needs: [tests_dev]
 
-#   script: echo "Define your deployment script!"
-#   environment: production
+  script: 
+      - apk add --no-cache rsync openssh
+      - mkdir -p ~/.ssh
+      - echo "$DEPLOY_HOST_SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa
+      - chmod 600 ~/.ssh/id_dsa
+      - ssh-keyscan -t ecdsa 192.168.230.134 >> ~/.ssh/known_hosts
+      - chmod 644 ~/.ssh/known_hosts
+      - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+      - scp app-$CI_PIPELINE_IID.zip administrator@192.168.230.134:/app-folder
+
+      - ssh react-demo-user@192.168.230.134:/home/app-folder"./update.bat"
