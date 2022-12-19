@@ -1,0 +1,12 @@
+stages:
+  - triggers
+
+trigger_dev:
+  stage: triggers
+  trigger:
+    include: /gitlabci/dev/.gitlab-ci.yml
+  rules:
+    # Triggered only when push, commit or merge request event come
+    - if: $CI_COMMIT_BRANCH == "dev" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"
+      #when: manual
+      when: always

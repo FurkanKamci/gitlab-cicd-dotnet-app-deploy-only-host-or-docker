@@ -1,0 +1,35 @@
+image: mcr.microsoft.com/dotnet/sdk:6.0-alpine
+
+stages:
+  - build
+  # - tests
+  # - deploy
+
+before_script:
+  - 'dotnet restore --use-current-runtime'
+  - 'apk add --update zip curl'
+
+build_dev:
+  stage: build
+  script:
+    - 'dotnet build -o /app --no-restore'
+    - 'zip -r app.zip /app'
+  
+  artifacts:
+    expire_in: 1 hrs
+    paths:
+      - app.zip
+
+# tests_dev:
+#   stage: test
+#   needs: [build_dev]
+
+#   script:
+#     - 'dotnet test --no-restore'
+
+# deploy_dev:
+#   stage: deploy
+#   needs: [tests_dev]
+
+#   script: echo "Define your deployment script!"
+#   environment: production
