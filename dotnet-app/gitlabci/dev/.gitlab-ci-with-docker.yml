@@ -1,0 +1,57 @@
+image: docker
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  GIT_SSL_NO_VERIFY: "1"
+  APP_NAME: test-dotnet-project
+  TAG: $HARBOR_REGISTRY_TAG/$HARBOR_NAMESPACE/$APP_NAME
+
+stages:
+  - build_dev
+  - deploy_dev
+
+dotnet_build_dev:
+  image: docker
+  services:
+    - name: docker:20-dind
+      alias: docker
+
+  stage: build_dev
+
+  before_script:
+    - echo "Harbor Login"
+    - docker login --username $HARBOR_REGISTRY_USER --password $HARBOR_REGISTRY_USER_PASSWORD $HARBOR_REGISTRY
+
+  script:
+    - echo "Dockerfile Build"
+    - docker build --no-cache --tag $TAG:$CI_PIPELINE_IID .
+    - docker tag $TAG:$CI_PIPELINE_IID $TAG:latest
+
+    - echo "Harbor Push"
+    - docker push $TAG:$CI_PIPELINE_IID
+    - docker push $TAG:latest
+
+    - echo "Clean"
+    - docker rmi --force $(docker images -q "$TAG" | uniq)
+    - docker rmi `docker images | grep "<none>" | awk {'print $3'}`
+#--------------------------------#
+spring_deploy_dev:
+  stage: deploy_dev
+  needs: [dotnet_build_dev]
+  image: alpine
+
+  script:
+    - apk add --no-cache rsync openssh
+    - mkdir -p ~/.ssh
+    - echo "$DEPLOY_HOST_SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa
+    - chmod 600 ~/.ssh/id_dsa
+    - ssh-keyscan -t ecdsa 192.168.230.134 >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+    - ssh dotnet-demo-user@192.168.230.134 "
+      cd dotnet-docker-project/;
+      pwd;
+      ./update.sh
+      "

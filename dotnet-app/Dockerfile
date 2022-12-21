@@ -8,7 +8,7 @@ RUN dotnet restore --use-current-runtime
 
 # copy everything else and build app
 COPY . .
-RUN dotnet publish -c Release -o /app --no-restore
+RUN dotnet build -c Release -o /app --no-restore
 
 # final stage/image
 FROM mcr.microsoft.com/dotnet/aspnet:6.0
