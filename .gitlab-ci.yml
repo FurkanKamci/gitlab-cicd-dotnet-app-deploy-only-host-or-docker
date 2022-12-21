@@ -10,3 +10,23 @@ trigger_dev:
     - if: $CI_COMMIT_BRANCH == "dev" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "dev"
       #when: manual
       when: always
+
+# trigger_preprod:
+#   stage: triggers
+#   trigger:
+#     include: dotnet-app/gitlabci/preprod/.gitlab-ci.yml
+#   rules:
+#     # Triggered only when push, commit or merge request event come
+#     - if: $CI_COMMIT_BRANCH == "preprod" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "preprod"
+#       #when: manual
+#       when: manual
+
+# trigger_prod:
+#   stage: triggers
+#   trigger:
+#     include: dotnet-app/gitlabci/prod/.gitlab-ci.yml
+#   rules:
+#     # Triggered only when push, commit or merge request event come
+#     - if: $CI_COMMIT_BRANCH == "prod" || $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "prod"
+#       #when: manual
+#       when: manual

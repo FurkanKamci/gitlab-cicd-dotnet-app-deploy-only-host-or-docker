@@ -1,16 +1,22 @@
 image: mcr.microsoft.com/dotnet/sdk:6.0-alpine
 
 stages:
+  - test
   - build
-  # - tests
-  # - deploy
+  - deploy
 
 before_script:
   - 'dotnet restore --use-current-runtime'
   - 'apk add --update zip curl'
 
+test_dev:
+  stage: test
+  script:
+    - 'dotnet test --no-restore'
+
 build_dev:
   stage: build
+  needs: [test_dev]
   script:
     - 'dotnet build -o /app --no-restore'
     - 'zip -r app-$CI_PIPELINE_IID.zip /app'
@@ -20,26 +26,29 @@ build_dev:
     paths:
       - app-$CI_PIPELINE_IID.zip
 
-tests_dev:
-  stage: test
-  needs: [build_dev]
-
-  script:
-    - 'dotnet test --no-restore'
-
 deploy_dev:
   stage: deploy
-  needs: [tests_dev]
+  needs: [build_dev]
 
   script: 
-      - apk add --no-cache rsync openssh
-      - mkdir -p ~/.ssh
-      - echo "$DEPLOY_HOST_SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa
-      - chmod 600 ~/.ssh/id_dsa
-      - ssh-keyscan -t ecdsa 192.168.230.134 >> ~/.ssh/known_hosts
-      - chmod 644 ~/.ssh/known_hosts
-      - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-
-      - scp app-$CI_PIPELINE_IID.zip administrator@192.168.230.134:/app-folder
-
-      - ssh react-demo-user@192.168.230.134:/home/app-folder"./update.bat"
+    - apk add --no-cache rsync openssh
+    - mkdir -p ~/.ssh
+    - echo "$DEPLOY_HOST_SSH_PRIVATE_KEY" >> ~/.ssh/id_dsa
+    - chmod 600 ~/.ssh/id_dsa
+    - eval $(ssh-agent -s)
+    - ssh-keyscan -t ecdsa 192.168.230.129 >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    
+    # Eski zip dosyasının silinmesi
+    - ssh furkan@192.168.230.129 "
+      cd C:/app-folder;
+      rm *.zip;
+      exit"
+    # Yeni zip dosyasının kopyalanması
+    - scp app-$CI_PIPELINE_IID.zip furkan@192.168.230.129:'C:\app-folder\'
+    # Update scriptinin çalıştırılması
+    - ssh furkan@192.168.230.129 "
+      cd C:/app-folder;
+      ./update.bat;
+      exit"
